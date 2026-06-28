@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard: Phân tích Hành vi Chi tiêu Hà Nội</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            border-color: rgba(34, 211, 238, 0.3);
+        }
+
+        .text-gradient {
+            background: linear-gradient(to right, #22d3ee, #e879f9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Custom Tooltip Style */
+        .term-tooltip {
+            border-bottom: 1px dashed #22d3ee;
+            cursor: help;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-cyan-500 selection:text-white">
+
+    <div class="max-w-6xl mx-auto px-4 py-12">
+        
+        <header class="text-center mb-16 relative">
+            <h1 class="text-4xl md:text-6xl font-extrabold mb-4 text-gradient uppercase tracking-tight">Hành Vi Chi Tiêu Hộ Gia Đình</h1>
+            <p class="text-xl text-slate-300 max-w-3xl mx-auto mb-6">Báo cáo trực quan hóa dữ liệu và Ứng dụng Kiểm định Ràng buộc Wald Test nhằm tối ưu hóa phương trình hồi quy.</p>
+            
+            <!-- Nút tương tác chạy lại biểu đồ -->
+            <button onclick="reRenderCharts()" class="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-900 font-bold py-2 px-6 rounded-full shadow-lg shadow-cyan-500/30 transition transform hover:scale-105 active:scale-95">
+                &#9654; Chạy lại mô phỏng dữ liệu
+            </button>
+        </header>
+
+        <section class="glass-card rounded-3xl p-8 mb-12">
+            <h2 class="text-2xl font-bold mb-4 text-cyan-400">1. Bối cảnh & Khung Lý Thuyết</h2>
+            <p class="text-slate-300 mb-6 leading-relaxed">
+                Nhóm nghiên cứu sử dụng phương pháp ước lượng <span class="term-tooltip group">OLS<span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-64 bg-slate-900 text-slate-300 text-xs p-3 rounded-lg shadow-xl z-20 border border-slate-700">Bình phương nhỏ nhất thông thường (Ordinary Least Squares) - Phương pháp cơ bản nhất để ước lượng tham số trong Kinh tế lượng.</span></span>. Mục tiêu là xây dựng mô hình tối giản, tránh khuyết tật <span class="term-tooltip group">đa cộng tuyến<span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-64 bg-slate-900 text-slate-300 text-xs p-3 rounded-lg shadow-xl z-20 border border-slate-700">Hiện tượng các biến độc lập có sự tương quan tuyến tính chặt chẽ với nhau, làm sai lệch phương sai của các hệ số ước lượng.</span></span>, bám sát giáo trình chuẩn của trường đại học.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                <div class="bg-slate-800 rounded-2xl p-6 border-b-4 border-cyan-500 shadow-lg">
+                    <div class="text-5xl font-black text-cyan-400 mb-2">420</div>
+                    <div class="text-sm text-slate-400 uppercase tracking-widest">Hộ gia đình (Quan sát)</div>
+                </div>
+                <div class="md:col-span-2 bg-slate-800 rounded-2xl p-6 border-b-4 border-fuchsia-500 shadow-lg flex flex-col justify-center">
+                    <div class="text-sm text-slate-400 uppercase tracking-widest mb-3">Mô hình Hồi quy Lựa chọn (Tương tác)</div>
+                    <div class="text-xl md:text-2xl font-mono text-fuchsia-300 bg-slate-900 p-4 rounded-xl overflow-x-auto flex justify-center items-center flex-wrap gap-2">
+                        <span>ln(</span>
+                        <span class="term-tooltip group text-white font-bold">CONSUM
+                            <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-fuchsia-900 text-fuchsia-100 text-xs p-2 rounded z-20 font-sans font-normal border border-fuchsia-500">Biến phụ thuộc: Tổng chi tiêu tiêu dùng của hộ gia đình.</span>
+                        </span>
+                        <span>) = &beta;<sub>0</sub> + &beta;<sub>1</sub>ln(</span>
+                        <span class="term-tooltip group text-cyan-400">INCOME
+                            <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-cyan-900 text-cyan-100 text-xs p-2 rounded z-20 font-sans font-normal border border-cyan-500">Biến độc lập định lượng: Tổng thu nhập của hộ gia đình.</span>
+                        </span>
+                        <span>) + &beta;<sub>2</sub></span>
+                        <span class="term-tooltip group text-emerald-400">SIZE
+                            <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-emerald-900 text-emerald-100 text-xs p-2 rounded z-20 font-sans font-normal border border-emerald-500">Biến độc lập định lượng: Quy mô (số thành viên) của hộ.</span>
+                        </span>
+                        <span> + &beta;<sub>3</sub></span>
+                        <span class="term-tooltip group text-amber-400">URBAN
+                            <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-amber-900 text-amber-100 text-xs p-2 rounded z-20 font-sans font-normal border border-amber-500">Biến giả định tính: Nhận giá trị 1 nếu ở Nội thành, 0 nếu Ngoại thành.</span>
+                        </span>
+                        <span> + u</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-6 text-emerald-400 text-center uppercase tracking-wider">Cơ chế Kiểm định Wald Test</h2>
+            
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4 text-center">
+                <div class="bg-slate-800 text-white font-semibold py-4 px-6 rounded-xl border-2 border-slate-600 shadow-md w-full md:w-auto">
+                    Thiết lập Ràng buộc (H0: &beta; = 0)
+                </div>
+                <div class="text-3xl text-emerald-500 rotate-90 md:rotate-0">&#10140;</div>
+                
+                <div class="bg-slate-800 py-4 px-6 rounded-xl border-2 border-emerald-500 shadow-emerald-500/20 shadow-lg w-full md:w-auto hover:bg-slate-700 cursor-pointer transition">
+                    <span class="block text-sm text-slate-400">Điều kiện quyết định</span>
+                    <span class="font-bold text-emerald-400">P-value vs Mức ý nghĩa &alpha; = 5%</span>
+                </div>
+                <div class="text-3xl text-emerald-500 rotate-90 md:rotate-0">&#10140;</div>
+
+                <div class="flex flex-col gap-4 w-full md:w-auto">
+                    <div class="bg-fuchsia-900/50 text-fuchsia-200 py-3 px-6 rounded-xl border border-fuchsia-500 hover:scale-105 transition transform">
+                        <span class="font-bold text-fuchsia-400">&lt; 0.05:</span> Bác bỏ H0 (Biến CÓ ý nghĩa)
+                    </div>
+                    <div class="bg-cyan-900/50 text-cyan-200 py-3 px-6 rounded-xl border border-cyan-500 hover:scale-105 transition transform">
+                        <span class="font-bold text-cyan-400">&gt; 0.05:</span> Chấp nhận H0 (Biến KHÔNG ý nghĩa)
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <section class="glass-card rounded-3xl p-6 lg:p-8 shadow-xl relative overflow-hidden group">
+                <div class="absolute top-0 right-0 bg-cyan-500 text-slate-900 font-bold px-4 py-1 rounded-bl-xl text-sm z-10">Mở rộng mô hình</div>
+                <h2 class="text-2xl font-bold mb-4 text-cyan-400">2. Thu hẹp Mô hình: Biến FOOD</h2>
+                <p class="text-slate-300 mb-6 text-sm">
+                    Đánh giá việc đưa thêm biến chi tiêu thực phẩm. Giả thuyết H0: Hệ số của FOOD bằng 0.
+                </p>
+
+                <div class="chart-container mb-6">
+                    <canvas id="chartFood"></canvas>
+                </div>
+
+                <div class="bg-cyan-950/50 p-5 rounded-2xl border border-cyan-800 transition group-hover:bg-cyan-900/40">
+                    <h3 class="text-cyan-300 font-bold mb-2 uppercase text-sm">&#10003; Sự Đánh Đổi (Trade-off)</h3>
+                    <p class="text-slate-300 text-sm">
+                        Mặc dù P-value = <span class="font-bold text-white">0.0000</span> (thống kê chỉ ra có ý nghĩa), nhưng do FOOD là cấu phần trực tiếp của CONSUM, việc giữ lại sẽ gây <span class="term-tooltip relative group/in text-cyan-400">nội sinh<span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover/in:block w-48 bg-slate-900 text-slate-300 text-xs p-2 rounded z-20 border border-slate-700">Trùng lặp thông tin vĩ mô, biến độc lập bị tương quan với phần dư.</span></span>. Nhóm quyết định <span class="text-cyan-400 font-bold">LOẠI BỎ</span> để bảo vệ logic lý thuyết.
+                    </p>
+                </div>
+            </section>
+
+            <section class="glass-card rounded-3xl p-6 lg:p-8 shadow-xl relative overflow-hidden group">
+                <div class="absolute top-0 right-0 bg-fuchsia-500 text-white font-bold px-4 py-1 rounded-bl-xl text-sm z-10">Mô hình chốt</div>
+                <h2 class="text-2xl font-bold mb-4 text-fuchsia-400">3. Giữ lại Biến giả: Biến URBAN</h2>
+                <p class="text-slate-300 mb-6 text-sm">
+                    Đánh giá vai trò của yếu tố khu vực (Nội/Ngoại thành). Giả thuyết H0: Hệ số của URBAN bằng 0.
+                </p>
+
+                <div class="chart-container mb-6">
+                    <canvas id="chartUrban"></canvas>
+                </div>
+
+                <div class="bg-fuchsia-950/50 p-5 rounded-2xl border border-fuchsia-800 transition group-hover:bg-fuchsia-900/40">
+                    <h3 class="text-fuchsia-300 font-bold mb-2 uppercase text-sm">&#10003; Kết luận Kinh tế lượng</h3>
+                    <p class="text-slate-300 text-sm">
+                        Với P-value = <span class="font-bold text-white">0.00018</span> (Rất nhỏ so với 0.05), ta bác bỏ mạnh mẽ H0. Biến URBAN có ý nghĩa thống kê cực kỳ cao. Yếu tố địa lý thực sự tạo ra sự dịch chuyển đáng kể trong hành vi chi tiêu tại Hà Nội.
+                    </p>
+                </div>
+            </section>
+        </div>
+
+        <section class="glass-card rounded-3xl p-8 shadow-2xl mb-12">
+            <h2 class="text-2xl font-bold mb-4 text-emerald-400 text-center">4. Phân tích Chuyên sâu: Tác động của Khu vực</h2>
+            <p class="text-slate-300 mb-8 text-center max-w-3xl mx-auto">
+                Từ việc khẳng định URBAN có ý nghĩa thống kê, dưới đây là mô phỏng trực quan sự chênh lệch mức chi tiêu giữa hai khu vực dựa trên hệ số ước lượng biên.
+            </p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                <div class="chart-container group cursor-crosshair">
+                    <canvas id="chartImpact"></canvas>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-slate-800 p-6 rounded-2xl border-l-4 border-slate-500 hover:pl-8 transition-all duration-300 cursor-pointer">
+                        <h4 class="font-bold text-lg text-white mb-1">Ngoại thành (URBAN = 0)</h4>
+                        <p class="text-slate-400 text-sm">Đại diện cho mức chi tiêu cơ sở. Hệ số chặn của hàm tiêu dùng thấp hơn, do đặc thù giá cả hàng hóa, dịch vụ tại các huyện ngoại thành rẻ hơn nội đô.</p>
+                    </div>
+                    <div class="bg-slate-800 p-6 rounded-2xl border-l-4 border-emerald-500 hover:pl-8 transition-all duration-300 cursor-pointer">
+                        <h4 class="font-bold text-lg text-emerald-400 mb-1">Nội thành (URBAN = 1)</h4>
+                        <p class="text-slate-400 text-sm">Mức chi tiêu tăng cường. Đường hồi quy dịch chuyển lên trên, phản ánh áp lực lạm phát đô thị, chi phí sinh hoạt và dịch vụ đắt đỏ tại trung tâm Hà Nội.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center text-slate-500 text-sm mt-12 pb-8">
+            <p>Infographic Dashboard tương tác - Trích xuất từ kết quả xử lý dữ liệu chuẩn trên phần mềm EViews 4.0.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        // Hàm bẻ dòng nhãn (label) nếu quá dài
+        function wrapLabel(label) {
+            if (label.length <= 16) return label;
+            const words = label.split(' ');
+            let lines = [];
+            let currentLine = '';
+            words.forEach(word => {
+                if ((currentLine + word).length > 16) {
+                    if (currentLine) lines.push(currentLine.trim());
+                    currentLine = word + ' ';
+                } else {
+                    currentLine += word + ' ';
+                }
+            });
+            if (currentLine) lines.push(currentLine.trim());
+            return lines;
+        }
+
+        // Cấu hình chung cho Chart.js
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 2000,
+                easing: 'easeOutQuart'
+            },
+            plugins: {
+                legend: { labels: { color: '#cbd5e1' } },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleColor: '#22d3ee',
+                    bodyColor: '#f8fafc',
+                    borderColor: '#334155',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            const item = tooltipItems[0];
+                            let label = item.chart.data.labels[item.dataIndex];
+                            return Array.isArray(label) ? label.join(' ') : label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#334155', drawBorder: false },
+                    ticks: { color: '#94a3b8' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: {size: 11} }
+                }
+            }
+        };
+
+        // Khai báo biến lưu trữ các Chart để có thể destroy() khi chạy lại
+        let chartFoodInstance = null;
+        let chartUrbanInstance = null;
+        let chartImpactInstance = null;
+
+        function renderCharts() {
+            // Render Biểu đồ FOOD
+            const ctxFood = document.getElementById('chartFood').getContext('2d');
+            chartFoodInstance = new Chart(ctxFood, {
+                type: 'bar',
+                data: {
+                    labels: [wrapLabel('Ngưỡng Ý nghĩa (Alpha)'), wrapLabel('Chỉ số P-value (FOOD)')],
+                    datasets: [{
+                        label: 'Giá trị xác suất',
+                        data: [0.05, 0.0000],
+                        backgroundColor: ['#334155', '#ef4444'],
+                        borderRadius: 6,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    plugins: {
+                        ...commonOptions.plugins,
+                        title: {
+                            display: true,
+                            text: 'F-statistic: 56.54 | Bác bỏ H0',
+                            color: '#f8fafc',
+                            font: { size: 15, family: 'Inter' },
+                            padding: { bottom: 20 }
+                        }
+                    }
+                }
+            });
+
+            // Render Biểu đồ URBAN
+            const ctxUrban = document.getElementById('chartUrban').getContext('2d');
+            chartUrbanInstance = new Chart(ctxUrban, {
+                type: 'bar',
+                data: {
+                    labels: [wrapLabel('Ngưỡng Ý nghĩa (Alpha)'), wrapLabel('Chỉ số P-value (URBAN)')],
+                    datasets: [{
+                        label: 'Giá trị xác suất',
+                        data: [0.05, 0.00018],
+                        backgroundColor: ['#334155', '#10b981'],
+                        borderRadius: 6,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    plugins: {
+                        ...commonOptions.plugins,
+                        title: {
+                            display: true,
+                            text: 'F-statistic: 14.28 | Bác bỏ H0',
+                            color: '#f8fafc',
+                            font: { size: 15, family: 'Inter' },
+                            padding: { bottom: 20 }
+                        }
+                    }
+                }
+            });
+
+            // Render Biểu đồ Doughnut (URBAN Impact)
+            const ctxImpact = document.getElementById('chartImpact').getContext('2d');
+            const doughnutOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { animateScale: true, animateRotate: true, duration: 2000 },
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#cbd5e1', padding: 20 } },
+                    tooltip: commonOptions.plugins.tooltip
+                }
+            };
+
+            chartImpactInstance = new Chart(ctxImpact, {
+                type: 'doughnut',
+                data: {
+                    labels: [wrapLabel('Ngoại thành (URBAN = 0)'), wrapLabel('Nội thành (URBAN = 1)')],
+                    datasets: [{
+                        data: [45, 85],
+                        backgroundColor: ['#64748b', '#10b981'],
+                        borderWidth: 3,
+                        borderColor: '#0f172a',
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    ...doughnutOptions,
+                    cutout: '75%',
+                    plugins: {
+                        ...doughnutOptions.plugins,
+                        title: {
+                            display: true,
+                            text: 'Mô phỏng Mức chi tiêu Cơ sở vs Tăng cường',
+                            color: '#f8fafc',
+                            font: { size: 14, weight: 'normal' },
+                            padding: { bottom: 10 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Hàm gọi khi bấm nút "Chạy lại mô phỏng"
+        function reRenderCharts() {
+            if(chartFoodInstance) chartFoodInstance.destroy();
+            if(chartUrbanInstance) chartUrbanInstance.destroy();
+            if(chartImpactInstance) chartImpactInstance.destroy();
+            renderCharts();
+        }
+
+        // Chạy lần đầu khi load trang
+        window.onload = renderCharts;
+    </script>
+</body>
+</html>
