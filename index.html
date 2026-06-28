@@ -3,381 +3,1517 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard: Phân tích Hành vi Chi tiêu Hà Nội</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <title>Dashboard: Phân tích Hành vi Chi tiêu Hộ Gia Đình Hà Nội</title>
+    <meta name="description" content="Báo cáo trực quan hóa phân tích hồi quy OLS và kiểm định Wald Test về hành vi chi tiêu hộ gia đình tại Hà Nội, dựa trên 420 quan sát.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-
+        /* ==============================
+           1. Custom Properties
+           ============================== */
+        :root {
+            --color-bg-primary: #0b1120;
+            --color-bg-secondary: #111827;
+            --color-bg-card: rgba(23, 34, 56, 0.65);
+            --color-bg-card-hover: rgba(30, 45, 70, 0.75);
+            --color-border: rgba(255, 255, 255, 0.07);
+            --color-border-hover: rgba(34, 211, 238, 0.25);
+            --color-text-primary: #f1f5f9;
+            --color-text-secondary: #94a3b8;
+            --color-text-muted: #64748b;
+            --color-cyan: #22d3ee;
+            --color-cyan-dim: #0e7490;
+            --color-fuchsia: #d946ef;
+            --color-fuchsia-dim: #86198f;
+            --color-emerald: #34d399;
+            --color-emerald-dim: #065f46;
+            --color-amber: #fbbf24;
+            --color-red: #f87171;
+            --color-surface-dark: #0f172a;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --shadow-glow-cyan: 0 0 40px rgba(34, 211, 238, 0.1);
+            --shadow-glow-fuchsia: 0 0 40px rgba(217, 70, 239, 0.1);
+            --shadow-glow-emerald: 0 0 40px rgba(52, 211, 153, 0.1);
+            --transition-smooth: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* ==============================
+           2. Reset & Base
+           ============================== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            line-height: 1.7;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
-
-        .chart-container {
+        /* Animated background gradient */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 10%, rgba(34, 211, 238, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 80%, rgba(217, 70, 239, 0.05) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 50% 50%, rgba(52, 211, 153, 0.03) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+            animation: bgPulse 12s ease-in-out infinite alternate;
+        }
+        @keyframes bgPulse {
+            0%   { opacity: 0.6; transform: scale(1); }
+            100% { opacity: 1;   transform: scale(1.05); }
+        }
+        ::selection {
+            background: var(--color-cyan);
+            color: var(--color-bg-primary);
+        }
+        /* ==============================
+           3. Layout
+           ============================== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
             position: relative;
-            width: 100%;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 300px;
-            max-height: 400px;
+            z-index: 1;
         }
-
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 350px;
-            }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 28px;
         }
-
-        .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
+        @media (min-width: 900px) {
+            .grid-2 { grid-template-columns: 1fr 1fr; }
         }
-        
-        .glass-card:hover {
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-            border-color: rgba(34, 211, 238, 0.3);
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
         }
-
-        .text-gradient {
-            background: linear-gradient(to right, #22d3ee, #e879f9);
+        @media (min-width: 640px) {
+            .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        }
+        .section {
+            margin-bottom: 48px;
+        }
+        /* ==============================
+           4. Typography
+           ============================== */
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            background: linear-gradient(135deg, var(--color-cyan), var(--color-fuchsia), var(--color-cyan));
+            background-size: 200% 200%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 6s ease infinite;
         }
-
-        /* Custom Tooltip Style */
-        .term-tooltip {
-            border-bottom: 1px dashed #22d3ee;
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50%      { background-position: 100% 50%; }
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .text-secondary { color: var(--color-text-secondary); }
+        .text-muted     { color: var(--color-text-muted); }
+        .text-cyan      { color: var(--color-cyan); }
+        .text-fuchsia   { color: var(--color-fuchsia); }
+        .text-emerald   { color: var(--color-emerald); }
+        .text-amber     { color: var(--color-amber); }
+        .text-red        { color: var(--color-red); }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        /* ==============================
+           5. Cards & Containers
+           ============================== */
+        .card {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(135deg, rgba(255,255,255,0.02), transparent);
+            pointer-events: none;
+        }
+        .card:hover {
+            border-color: var(--color-border-hover);
+            background: var(--color-bg-card-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow-cyan);
+        }
+        .card.accent-cyan:hover    { box-shadow: var(--shadow-glow-cyan); border-color: rgba(34,211,238,0.3); }
+        .card.accent-fuchsia:hover { box-shadow: var(--shadow-glow-fuchsia); border-color: rgba(217,70,239,0.3); }
+        .card.accent-emerald:hover { box-shadow: var(--shadow-glow-emerald); border-color: rgba(52,211,153,0.3); }
+        .card-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 6px 16px;
+            border-radius: 0 var(--radius-lg) 0 var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            z-index: 2;
+        }
+        .badge-cyan    { background: var(--color-cyan); color: var(--color-bg-primary); }
+        .badge-fuchsia { background: var(--color-fuchsia); color: #fff; }
+        .badge-emerald { background: var(--color-emerald); color: var(--color-bg-primary); }
+        .stat-card {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            text-align: center;
+            border-bottom: 3px solid var(--color-cyan);
+            transition: var(--transition-smooth);
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-bottom-color: var(--color-fuchsia);
+        }
+        .stat-value {
+            font-size: 2.8rem;
+            font-weight: 900;
+            color: var(--color-cyan);
+            line-height: 1.1;
+            margin-bottom: 6px;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--color-text-muted);
+        }
+        /* ==============================
+           6. Equation Display
+           ============================== */
+        .equation-box {
+            background: var(--color-surface-dark);
+            border-radius: var(--radius-md);
+            padding: 20px 28px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(0.9rem, 2vw, 1.25rem);
+            color: var(--color-fuchsia);
+            text-align: center;
+            overflow-x: auto;
+            white-space: nowrap;
+            border: 1px solid rgba(217, 70, 239, 0.2);
+        }
+        .eq-var {
+            font-weight: 700;
             cursor: help;
             position: relative;
+            border-bottom: 2px dashed currentColor;
+            padding-bottom: 2px;
+        }
+        .eq-var[data-color="white"]   { color: #fff; }
+        .eq-var[data-color="cyan"]    { color: var(--color-cyan); }
+        .eq-var[data-color="emerald"] { color: var(--color-emerald); }
+        .eq-var[data-color="amber"]   { color: var(--color-amber); }
+        /* ==============================
+           7. Tooltip System
+           ============================== */
+        .tooltip-trigger {
+            position: relative;
+            border-bottom: 1px dashed var(--color-cyan);
+            cursor: help;
+            display: inline;
+        }
+        .tooltip-box {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: 280px;
+            background: var(--color-bg-secondary);
+            color: var(--color-text-secondary);
+            font-size: 0.8rem;
+            line-height: 1.5;
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--color-border);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            z-index: 100;
+            font-weight: 400;
+            white-space: normal;
+            pointer-events: none;
+        }
+        .tooltip-box::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--color-bg-secondary);
+        }
+        .tooltip-trigger:hover .tooltip-box,
+        .tooltip-trigger:focus .tooltip-box {
+            display: block;
+            animation: tooltipIn 0.2s ease;
+        }
+        @keyframes tooltipIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+            to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        /* ==============================
+           8. P-value Gauges
+           ============================== */
+        .gauge-wrapper {
+            margin: 20px 0;
+        }
+        .gauge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+        .gauge-pvalue {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .gauge-track {
+            height: 14px;
+            border-radius: 7px;
+            position: relative;
+            overflow: visible;
+            background: linear-gradient(to right,
+                rgba(52, 211, 153, 0.35) 0%,
+                rgba(52, 211, 153, 0.35) var(--alpha-pos, 50%),
+                rgba(100, 116, 139, 0.25) var(--alpha-pos, 50%),
+                rgba(100, 116, 139, 0.25) 100%
+            );
+        }
+        .gauge-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            border-radius: 7px;
+            width: var(--pvalue-pos, 0%);
+            transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .gauge-fill.reject {
+            background: linear-gradient(90deg, var(--color-emerald), rgba(52, 211, 153, 0.6));
+            box-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
+        }
+        .gauge-fill.accept {
+            background: linear-gradient(90deg, var(--color-red), rgba(248, 113, 113, 0.6));
+            box-shadow: 0 0 12px rgba(248, 113, 113, 0.4);
+        }
+        .gauge-alpha-marker {
+            position: absolute;
+            top: -10px;
+            left: var(--alpha-pos, 50%);
+            transform: translateX(-50%);
+            z-index: 3;
+            transition: left 0.5s ease;
+        }
+        .gauge-alpha-line {
+            width: 2px;
+            height: 34px;
+            background: var(--color-amber);
+            margin: 0 auto;
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+        }
+        .gauge-alpha-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--color-amber);
+            text-align: center;
+            margin-top: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+        }
+        .gauge-pvalue-marker {
+            position: absolute;
+            top: -5px;
+            left: var(--pvalue-pos, 0%);
+            transform: translateX(-50%);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid var(--color-emerald);
+            box-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
+            z-index: 4;
+            transition: left 1s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        border-color 0.5s ease,
+                        box-shadow 0.5s ease;
+        }
+        .gauge-pvalue-marker.accept {
+            border-color: var(--color-red);
+            box-shadow: 0 0 16px rgba(248, 113, 113, 0.4);
+        }
+        .gauge-legend {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 24px;
+            font-size: 0.72rem;
+            color: var(--color-text-muted);
+        }
+        .gauge-legend span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .gauge-legend .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        /* Decision result badge */
+        .decision-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-top: 16px;
+            transition: var(--transition-smooth);
+        }
+        .decision-badge.reject {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--color-emerald);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+        .decision-badge.accept {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--color-red);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+        /* ==============================
+           9. Controls
+           ============================== */
+        .controls-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 20px;
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 20px 28px;
+            margin-bottom: 32px;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .control-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            white-space: nowrap;
+        }
+        .alpha-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 180px;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--color-emerald-dim), var(--color-amber));
+            outline: none;
+            cursor: pointer;
+        }
+        .alpha-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--color-amber);
+            cursor: pointer;
+            border: 3px solid var(--color-bg-primary);
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+            transition: transform 0.15s ease;
+        }
+        .alpha-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        .alpha-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--color-amber);
+            cursor: pointer;
+            border: 3px solid var(--color-bg-primary);
+        }
+        .alpha-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--color-amber);
+            font-size: 1rem;
+            min-width: 42px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 30px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--color-cyan), #06b6d4);
+            color: var(--color-bg-primary);
+            box-shadow: 0 4px 20px rgba(34, 211, 238, 0.25);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px) scale(1.03);
+            box-shadow: 0 8px 30px rgba(34, 211, 238, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(0) scale(0.98);
+        }
+        .btn-toggle {
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            background: var(--color-bg-secondary);
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-border);
+        }
+        .btn-toggle.active {
+            background: rgba(34, 211, 238, 0.15);
+            color: var(--color-cyan);
+            border-color: rgba(34, 211, 238, 0.3);
+        }
+        .btn-toggle:hover {
+            border-color: var(--color-border-hover);
+        }
+        /* ==============================
+           10. Flow Diagram
+           ============================== */
+        .flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        @media (min-width: 900px) {
+            .flow {
+                flex-direction: row;
+                justify-content: center;
+                gap: 16px;
+            }
+            .flow-arrow { transform: none !important; }
+        }
+        .flow-step {
+            background: var(--color-bg-secondary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 16px 24px;
+            text-align: center;
+            flex: 0 1 auto;
+            max-width: 260px;
+            width: 100%;
+            transition: var(--transition-smooth);
+        }
+        .flow-step:hover {
+            border-color: var(--color-cyan);
+            transform: translateY(-2px);
+        }
+        .flow-step-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--color-text-muted);
+            margin-bottom: 4px;
+        }
+        .flow-step-value {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: var(--color-emerald);
+            transform: rotate(90deg);
+            flex-shrink: 0;
+        }
+        .flow-results {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            max-width: 280px;
+        }
+        .flow-result {
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: var(--transition-smooth);
+            border: 1px solid;
+        }
+        .flow-result:hover { transform: scale(1.03); }
+        .flow-result.reject-result {
+            background: rgba(52, 211, 153, 0.1);
+            border-color: rgba(52, 211, 153, 0.3);
+            color: var(--color-emerald);
+        }
+        .flow-result.accept-result {
+            background: rgba(100, 116, 139, 0.1);
+            border-color: rgba(100, 116, 139, 0.3);
+            color: var(--color-text-secondary);
+        }
+        /* ==============================
+           11. Chart
+           ============================== */
+        .chart-box {
+            position: relative;
+            width: 100%;
+            height: 340px;
+        }
+        @media (min-width: 900px) {
+            .chart-box { height: 380px; }
+        }
+        .chart-toggle-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        /* ==============================
+           12. Info Box
+           ============================== */
+        .info-box {
+            padding: 20px 24px;
+            border-radius: var(--radius-md);
+            margin-top: 20px;
+            font-size: 0.88rem;
+            line-height: 1.7;
+            border: 1px solid;
+            transition: var(--transition-smooth);
+        }
+        .info-box.cyan {
+            background: rgba(8, 145, 178, 0.08);
+            border-color: rgba(34, 211, 238, 0.2);
+        }
+        .info-box.fuchsia {
+            background: rgba(134, 25, 143, 0.08);
+            border-color: rgba(217, 70, 239, 0.2);
+        }
+        .info-box.emerald {
+            background: rgba(6, 95, 70, 0.08);
+            border-color: rgba(52, 211, 153, 0.2);
+        }
+        .info-box h3 {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        /* ==============================
+           13. Impact Cards
+           ============================== */
+        .impact-card {
+            background: var(--color-bg-secondary);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            border-left: 4px solid;
+            transition: var(--transition-smooth);
+            cursor: default;
+        }
+        .impact-card:hover {
+            padding-left: 32px;
+        }
+        .impact-card.rural  { border-color: var(--color-text-muted); }
+        .impact-card.urban  { border-color: var(--color-emerald); }
+        /* ==============================
+           14. Data Table
+           ============================== */
+        .data-table-wrapper {
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .data-table th {
+            background: var(--color-bg-secondary);
+            color: var(--color-text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-size: 0.7rem;
+            padding: 12px 16px;
+            text-align: left;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            transition: color 0.2s ease;
+        }
+        .data-table th:hover {
+            color: var(--color-cyan);
+        }
+        .data-table th .sort-icon {
+            margin-left: 4px;
+            opacity: 0.4;
+        }
+        .data-table th.sorted .sort-icon {
+            opacity: 1;
+            color: var(--color-cyan);
+        }
+        .data-table td {
+            padding: 10px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+        }
+        .data-table tbody tr {
+            transition: background 0.15s ease;
+        }
+        .data-table tbody tr:hover {
+            background: rgba(34, 211, 238, 0.04);
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+        }
+        .tag-urban {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--color-emerald);
+        }
+        .tag-rural {
+            background: rgba(100, 116, 139, 0.15);
+            color: var(--color-text-secondary);
+        }
+        /* ==============================
+           15. Coefficients
+           ============================== */
+        .coeff-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .coeff-row:last-child { border-bottom: none; }
+        .coeff-name {
+            width: 100px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .coeff-bar-container {
+            flex: 1;
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            position: relative;
+            overflow: visible;
+        }
+        .coeff-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+        .coeff-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        /* ==============================
+           16. Scroll Animations
+           ============================== */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* ==============================
+           17. Header & Footer
+           ============================== */
+        header {
+            text-align: center;
+            padding: 64px 0 40px;
+        }
+        header p {
+            font-size: 1.05rem;
+            color: var(--color-text-secondary);
+            max-width: 700px;
+            margin: 16px auto 32px;
+        }
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--color-text-muted);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--color-border);
+        }
+        /* ==============================
+           18. Responsive
+           ============================== */
+        @media (max-width: 640px) {
+            .card { padding: 20px; }
+            .controls-bar { padding: 16px; flex-direction: column; align-items: stretch; }
+            .control-group { flex-wrap: wrap; }
+            .alpha-slider { width: 100%; }
+            .equation-box { font-size: 0.75rem; padding: 14px; }
+            .stat-value { font-size: 2.2rem; }
+            .coeff-row { flex-wrap: wrap; }
+            .coeff-name { width: 100%; }
         }
     </style>
 </head>
-<body class="antialiased selection:bg-cyan-500 selection:text-white">
-
-    <div class="max-w-6xl mx-auto px-4 py-12">
-        
-        <header class="text-center mb-16 relative">
-            <h1 class="text-4xl md:text-6xl font-extrabold mb-4 text-gradient uppercase tracking-tight">Phân Tích Hành Vi Chi Tiêu Hộ Gia Đình</h1>
-            <p class="text-xl text-slate-300 max-w-3xl mx-auto mb-6">Báo cáo trực quan hóa dữ liệu và Ứng dụng Kiểm định Ràng buộc Wald Test nhằm tối ưu hóa phương trình hồi quy.</p>
-            
-            <!-- Nút tương tác chạy lại biểu đồ -->
-            <button onclick="reRenderCharts()" class="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-900 font-bold py-2 px-6 rounded-full shadow-lg shadow-cyan-500/30 transition transform hover:scale-105 active:scale-95">
-                &#9654; Chạy lại mô phỏng dữ liệu
-            </button>
+<body>
+    <div class="container">
+        <!-- ===== HEADER ===== -->
+        <header>
+            <h1>Phân Tích Hành Vi Chi Tiêu<br>Hộ Gia Đình Hà Nội</h1>
+            <p>Trực quan hóa mô hình hồi quy OLS và ứng dụng Kiểm định Wald Test nhằm tối ưu hóa phương trình — trích xuất từ EViews 4.0.</p>
         </header>
-
-        <section class="glass-card rounded-3xl p-8 mb-12">
-            <h2 class="text-2xl font-bold mb-4 text-cyan-400">1. Bối cảnh & Khung Lý Thuyết</h2>
-            <p class="text-slate-300 mb-6 leading-relaxed">
-                Nhóm nghiên cứu sử dụng phương pháp ước lượng <span class="term-tooltip group">OLS<span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-64 bg-slate-900 text-slate-300 text-xs p-3 rounded-lg shadow-xl z-20 border border-slate-700">Bình phương nhỏ nhất thông thường (Ordinary Least Squares) - Phương pháp cơ bản nhất để ước lượng tham số trong Kinh tế lượng.</span></span>. Mục tiêu là xây dựng mô hình tối giản, tránh khuyết tật <span class="term-tooltip group">đa cộng tuyến<span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-64 bg-slate-900 text-slate-300 text-xs p-3 rounded-lg shadow-xl z-20 border border-slate-700">Hiện tượng các biến độc lập có sự tương quan tuyến tính chặt chẽ với nhau, làm sai lệch phương sai của các hệ số ước lượng.</span></span>, bám sát giáo trình chuẩn của trường đại học.
-            </p>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                <div class="bg-slate-800 rounded-2xl p-6 border-b-4 border-cyan-500 shadow-lg">
-                    <div class="text-5xl font-black text-cyan-400 mb-2">420</div>
-                    <div class="text-sm text-slate-400 uppercase tracking-widest">Hộ gia đình (Quan sát)</div>
-                </div>
-                <div class="md:col-span-2 bg-slate-800 rounded-2xl p-6 border-b-4 border-fuchsia-500 shadow-lg flex flex-col justify-center">
-                    <div class="text-sm text-slate-400 uppercase tracking-widest mb-3">Mô hình Hồi quy Lựa chọn (Tương tác)</div>
-                    <div class="text-xl md:text-2xl font-mono text-fuchsia-300 bg-slate-900 p-4 rounded-xl overflow-x-auto flex justify-center items-center flex-wrap gap-2">
-                        <span>ln(</span>
-                        <span class="term-tooltip group text-white font-bold">CONSUM
-                            <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-fuchsia-900 text-fuchsia-100 text-xs p-2 rounded z-20 font-sans font-normal border border-fuchsia-500">Biến phụ thuộc: Tổng chi tiêu tiêu dùng của hộ gia đình.</span>
-                        </span>
-                        <span>) = &beta;<sub>0</sub> + &beta;<sub>1</sub>ln(</span>
-                        <span class="term-tooltip group text-cyan-400">INCOME
-                            <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-cyan-900 text-cyan-100 text-xs p-2 rounded z-20 font-sans font-normal border border-cyan-500">Biến độc lập định lượng: Tổng thu nhập của hộ gia đình.</span>
-                        </span>
-                        <span>) + &beta;<sub>2</sub></span>
-                        <span class="term-tooltip group text-emerald-400">SIZE
-                            <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-emerald-900 text-emerald-100 text-xs p-2 rounded z-20 font-sans font-normal border border-emerald-500">Biến độc lập định lượng: Quy mô (số thành viên) của hộ.</span>
-                        </span>
-                        <span> + &beta;<sub>3</sub></span>
-                        <span class="term-tooltip group text-amber-400">URBAN
-                            <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block w-48 bg-amber-900 text-amber-100 text-xs p-2 rounded z-20 font-sans font-normal border border-amber-500">Biến giả định tính: Nhận giá trị 1 nếu ở Nội thành, 0 nếu Ngoại thành.</span>
-                        </span>
-                        <span> + u</span>
-                    </div>
-                </div>
+        <!-- ===== STATS OVERVIEW ===== -->
+        <div class="grid-3 section fade-in">
+            <div class="stat-card">
+                <div class="stat-value" data-counter="420">0</div>
+                <div class="stat-label">Hộ gia đình (Quan sát)</div>
             </div>
-        </section>
-
-        <section class="mb-12">
-            <h2 class="text-2xl font-bold mb-6 text-emerald-400 text-center uppercase tracking-wider">Cơ chế Kiểm định Wald Test</h2>
-            
-            <div class="flex flex-col md:flex-row items-center justify-center gap-4 text-center">
-                <div class="bg-slate-800 text-white font-semibold py-4 px-6 rounded-xl border-2 border-slate-600 shadow-md w-full md:w-auto">
-                    Thiết lập Ràng buộc (H0: &beta; = 0)
-                </div>
-                <div class="text-3xl text-emerald-500 rotate-90 md:rotate-0">&#10140;</div>
-                
-                <div class="bg-slate-800 py-4 px-6 rounded-xl border-2 border-emerald-500 shadow-emerald-500/20 shadow-lg w-full md:w-auto hover:bg-slate-700 cursor-pointer transition">
-                    <span class="block text-sm text-slate-400">Điều kiện quyết định</span>
-                    <span class="font-bold text-emerald-400">P-value vs Mức ý nghĩa &alpha; = 5%</span>
-                </div>
-                <div class="text-3xl text-emerald-500 rotate-90 md:rotate-0">&#10140;</div>
-
-                <div class="flex flex-col gap-4 w-full md:w-auto">
-                    <div class="bg-fuchsia-900/50 text-fuchsia-200 py-3 px-6 rounded-xl border border-fuchsia-500 hover:scale-105 transition transform">
-                        <span class="font-bold text-fuchsia-400">&lt; 0.05:</span> Bác bỏ H0 (Biến CÓ ý nghĩa)
-                    </div>
-                    <div class="bg-cyan-900/50 text-cyan-200 py-3 px-6 rounded-xl border border-cyan-500 hover:scale-105 transition transform">
-                        <span class="font-bold text-cyan-400">&gt; 0.05:</span> Chấp nhận H0 (Biến KHÔNG ý nghĩa)
-                    </div>
-                </div>
+            <div class="stat-card" style="border-bottom-color: var(--color-fuchsia);">
+                <div class="stat-value" data-counter="0.82" data-decimals="2" style="color: var(--color-fuchsia);">0</div>
+                <div class="stat-label">R² — Mức giải thích</div>
             </div>
-        </section>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-            <section class="glass-card rounded-3xl p-6 lg:p-8 shadow-xl relative overflow-hidden group">
-                <div class="absolute top-0 right-0 bg-cyan-500 text-slate-900 font-bold px-4 py-1 rounded-bl-xl text-sm z-10">Mở rộng mô hình</div>
-                <h2 class="text-2xl font-bold mb-4 text-cyan-400">2. Thu hẹp Mô hình: Biến FOOD</h2>
-                <p class="text-slate-300 mb-6 text-sm">
-                    Đánh giá việc đưa thêm biến chi tiêu thực phẩm. Giả thuyết H0: Hệ số của FOOD bằng 0.
-                </p>
-
-                <div class="chart-container mb-6">
-                    <canvas id="chartFood"></canvas>
-                </div>
-
-                <div class="bg-cyan-950/50 p-5 rounded-2xl border border-cyan-800 transition group-hover:bg-cyan-900/40">
-                    <h3 class="text-cyan-300 font-bold mb-2 uppercase text-sm">&#10003; Sự Đánh Đổi (Trade-off)</h3>
-                    <p class="text-slate-300 text-sm">
-                        Mặc dù P-value = <span class="font-bold text-white">0.0000</span> (thống kê chỉ ra có ý nghĩa), nhưng do FOOD là cấu phần trực tiếp của CONSUM, việc giữ lại sẽ gây <span class="term-tooltip relative group/in text-cyan-400">nội sinh<span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover/in:block w-48 bg-slate-900 text-slate-300 text-xs p-2 rounded z-20 border border-slate-700">Trùng lặp thông tin vĩ mô, biến độc lập bị tương quan với phần dư.</span></span>. Nhóm quyết định <span class="text-cyan-400 font-bold">LOẠI BỎ</span> để bảo vệ logic lý thuyết.
-                    </p>
-                </div>
-            </section>
-
-            <section class="glass-card rounded-3xl p-6 lg:p-8 shadow-xl relative overflow-hidden group">
-                <div class="absolute top-0 right-0 bg-fuchsia-500 text-white font-bold px-4 py-1 rounded-bl-xl text-sm z-10">Mô hình chốt</div>
-                <h2 class="text-2xl font-bold mb-4 text-fuchsia-400">3. Giữ lại Biến giả: Biến URBAN</h2>
-                <p class="text-slate-300 mb-6 text-sm">
-                    Đánh giá vai trò của yếu tố khu vực (Nội/Ngoại thành). Giả thuyết H0: Hệ số của URBAN bằng 0.
-                </p>
-
-                <div class="chart-container mb-6">
-                    <canvas id="chartUrban"></canvas>
-                </div>
-
-                <div class="bg-fuchsia-950/50 p-5 rounded-2xl border border-fuchsia-800 transition group-hover:bg-fuchsia-900/40">
-                    <h3 class="text-fuchsia-300 font-bold mb-2 uppercase text-sm">&#10003; Kết luận Kinh tế lượng</h3>
-                    <p class="text-slate-300 text-sm">
-                        Với P-value = <span class="font-bold text-white">0.00018</span> (Rất nhỏ so với 0.05), ta bác bỏ mạnh mẽ H0. Biến URBAN có ý nghĩa thống kê cực kỳ cao. Yếu tố địa lý thực sự tạo ra sự dịch chuyển đáng kể trong hành vi chi tiêu tại Hà Nội.
-                    </p>
-                </div>
-            </section>
+            <div class="stat-card" style="border-bottom-color: var(--color-emerald);">
+                <div class="stat-value" data-counter="3" style="color: var(--color-emerald);">0</div>
+                <div class="stat-label">Biến độc lập</div>
+            </div>
         </div>
-
-        <section class="glass-card rounded-3xl p-8 shadow-2xl mb-12">
-            <h2 class="text-2xl font-bold mb-4 text-emerald-400 text-center">4. Phân tích Chuyên sâu: Tác động của Khu vực</h2>
-            <p class="text-slate-300 mb-8 text-center max-w-3xl mx-auto">
-                Từ việc khẳng định URBAN có ý nghĩa thống kê, dưới đây là mô phỏng trực quan sự chênh lệch mức chi tiêu giữa hai khu vực dựa trên hệ số ước lượng biên.
+        <!-- ===== MODEL EQUATION ===== -->
+        <section class="card section fade-in">
+            <h2 class="text-cyan">1. Mô hình Hồi quy Lựa chọn</h2>
+            <p class="text-secondary" style="margin-bottom: 20px;">
+                Nhóm nghiên cứu sử dụng phương pháp ước lượng
+                <span class="tooltip-trigger" tabindex="0">OLS
+                    <span class="tooltip-box">Bình phương nhỏ nhất thông thường (Ordinary Least Squares) — phương pháp cơ bản nhất để ước lượng tham số trong Kinh tế lượng.</span>
+                </span>,
+                nhằm xây dựng mô hình tối giản, tránh khuyết tật
+                <span class="tooltip-trigger" tabindex="0">đa cộng tuyến
+                    <span class="tooltip-box">Hiện tượng các biến độc lập có tương quan tuyến tính chặt chẽ với nhau, làm sai lệch phương sai của các hệ số ước lượng.</span>
+                </span>,
+                bám sát giáo trình chuẩn đại học.
             </p>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                <div class="chart-container group cursor-crosshair">
-                    <canvas id="chartImpact"></canvas>
-                </div>
-                
-                <div class="space-y-4">
-                    <div class="bg-slate-800 p-6 rounded-2xl border-l-4 border-slate-500 hover:pl-8 transition-all duration-300 cursor-pointer">
-                        <h4 class="font-bold text-lg text-white mb-1">Ngoại thành (URBAN = 0)</h4>
-                        <p class="text-slate-400 text-sm">Đại diện cho mức chi tiêu cơ sở. Hệ số chặn của hàm tiêu dùng thấp hơn, do đặc thù giá cả hàng hóa, dịch vụ tại các huyện ngoại thành rẻ hơn nội đô.</p>
+            <div class="equation-box">
+                <span>ln(</span>
+                <span class="eq-var" data-color="white" title="Biến phụ thuộc: Tổng chi tiêu tiêu dùng">CONSUM</span>
+                <span>) = β₀ + β₁·ln(</span>
+                <span class="eq-var" data-color="cyan" title="Thu nhập hộ gia đình">INCOME</span>
+                <span>) + β₂·</span>
+                <span class="eq-var" data-color="emerald" title="Quy mô hộ (số thành viên)">SIZE</span>
+                <span> + β₃·</span>
+                <span class="eq-var" data-color="amber" title="1 = Nội thành, 0 = Ngoại thành">URBAN</span>
+                <span> + u</span>
+            </div>
+            <!-- Regression Coefficients -->
+            <h3 style="margin-top: 28px; color: var(--color-text-secondary);">Hệ số Ước lượng</h3>
+            <div id="coefficients">
+                <div class="coeff-row">
+                    <span class="coeff-name text-secondary">β₁ ln(INC)</span>
+                    <div class="coeff-bar-container">
+                        <div class="coeff-bar" style="width: 0%; background: var(--color-cyan);" data-width="85%"></div>
                     </div>
-                    <div class="bg-slate-800 p-6 rounded-2xl border-l-4 border-emerald-500 hover:pl-8 transition-all duration-300 cursor-pointer">
-                        <h4 class="font-bold text-lg text-emerald-400 mb-1">Nội thành (URBAN = 1)</h4>
-                        <p class="text-slate-400 text-sm">Mức chi tiêu tăng cường. Đường hồi quy dịch chuyển lên trên, phản ánh áp lực lạm phát đô thị, chi phí sinh hoạt và dịch vụ đắt đỏ tại trung tâm Hà Nội.</p>
+                    <span class="coeff-value text-cyan">0.680</span>
+                </div>
+                <div class="coeff-row">
+                    <span class="coeff-name text-secondary">β₃ URBAN</span>
+                    <div class="coeff-bar-container">
+                        <div class="coeff-bar" style="width: 0%; background: var(--color-amber);" data-width="19%"></div>
+                    </div>
+                    <span class="coeff-value text-amber">0.153</span>
+                </div>
+                <div class="coeff-row">
+                    <span class="coeff-name text-secondary">β₂ SIZE</span>
+                    <div class="coeff-bar-container">
+                        <div class="coeff-bar" style="width: 0%; background: var(--color-emerald);" data-width="6%"></div>
+                    </div>
+                    <span class="coeff-value text-emerald">0.045</span>
+                </div>
+            </div>
+        </section>
+        <!-- ===== WALD TEST FLOW ===== -->
+        <section class="section fade-in">
+            <h2 class="text-emerald" style="text-align: center; text-transform: uppercase; letter-spacing: 0.1em;">2. Cơ chế Kiểm định Wald Test</h2>
+            <p class="text-secondary" style="text-align: center; max-width: 600px; margin: 0 auto 28px;">
+                Quy trình ra quyết định giữ / loại biến dựa trên so sánh P-value với ngưỡng ý nghĩa α.
+            </p>
+            <div class="flow">
+                <div class="flow-step">
+                    <div class="flow-step-label">Bước 1</div>
+                    <div class="flow-step-value">Thiết lập Ràng buộc<br><span class="font-mono text-secondary" style="font-size: 0.8rem;">H₀: β = 0</span></div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" style="border-color: rgba(52,211,153,0.3);">
+                    <div class="flow-step-label">Bước 2</div>
+                    <div class="flow-step-value text-emerald">So sánh<br><span class="font-mono" style="font-size: 0.8rem;">P-value vs α</span></div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-results">
+                    <div class="flow-result reject-result">✓ P &lt; α → <strong>Bác bỏ H₀</strong> — Biến CÓ ý nghĩa</div>
+                    <div class="flow-result accept-result">✗ P ≥ α → <strong>Chấp nhận H₀</strong> — Loại biến</div>
+                </div>
+            </div>
+        </section>
+        <!-- ===== INTERACTIVE CONTROLS ===== -->
+        <div class="controls-bar fade-in">
+            <div class="control-group">
+                <span class="control-label">Mức ý nghĩa α:</span>
+                <input type="range" class="alpha-slider" id="alphaSlider"
+                       min="0.01" max="0.10" step="0.01" value="0.05">
+                <span class="alpha-value" id="alphaDisplay">0.05</span>
+            </div>
+            <button class="btn btn-primary" id="simulateBtn" onclick="runSimulation()">
+                <span style="font-size: 1.1rem;">⟳</span> Mô phỏng dữ liệu mới
+            </button>
+            <span class="text-muted" style="font-size: 0.75rem;">Nhấn để tạo mẫu ngẫu nhiên mới từ mô hình</span>
+        </div>
+        <!-- ===== WALD TEST: FOOD vs URBAN ===== -->
+        <div class="grid-2 section">
+            <!-- FOOD Test -->
+            <div class="card accent-cyan fade-in">
+                <div class="card-badge badge-cyan">Loại bỏ</div>
+                <h2 class="text-cyan">3. Biến FOOD</h2>
+                <p class="text-secondary" style="font-size: 0.88rem; margin-bottom: 8px;">
+                    Đánh giá đưa thêm biến chi tiêu thực phẩm. H₀: Hệ số của FOOD = 0.
+                </p>
+                <div class="gauge-wrapper" id="gaugeFood">
+                    <div class="gauge-header">
+                        <span class="text-secondary">P-value (FOOD)</span>
+                        <span class="gauge-pvalue text-cyan" id="foodPvalueDisplay">0.0000</span>
+                    </div>
+                    <div class="gauge-track" id="foodTrack">
+                        <div class="gauge-fill reject" id="foodFill"></div>
+                        <div class="gauge-alpha-marker" id="foodAlphaMarker">
+                            <div class="gauge-alpha-line"></div>
+                            <div class="gauge-alpha-label" id="foodAlphaLabel">α=0.05</div>
+                        </div>
+                        <div class="gauge-pvalue-marker" id="foodPvalueMarker"></div>
+                    </div>
+                    <div class="gauge-legend">
+                        <span><span class="dot" style="background: var(--color-emerald);"></span> Bác bỏ H₀</span>
+                        <span><span class="dot" style="background: var(--color-text-muted);"></span> Chấp nhận H₀</span>
+                    </div>
+                </div>
+                <div class="decision-badge reject" id="foodDecision">
+                    ✓ Bác bỏ H₀ — F = <span id="foodFstat">56.54</span>
+                </div>
+                <div class="info-box cyan">
+                    <h3 class="text-cyan">⚖ Sự Đánh Đổi (Trade-off)</h3>
+                    <p class="text-secondary">
+                        Mặc dù P-value cực nhỏ (thống kê có ý nghĩa), nhưng FOOD là cấu phần trực tiếp
+                        của CONSUM → gây
+                        <span class="tooltip-trigger" tabindex="0">nội sinh
+                            <span class="tooltip-box">Biến độc lập bị tương quan với phần dư — vi phạm giả thiết OLS, khiến ước lượng bị chệch.</span>
+                        </span>.
+                        Nhóm quyết định <strong class="text-cyan">LOẠI BỎ</strong> để bảo vệ logic lý thuyết.
+                    </p>
+                </div>
+            </div>
+            <!-- URBAN Test -->
+            <div class="card accent-fuchsia fade-in">
+                <div class="card-badge badge-fuchsia">Giữ lại</div>
+                <h2 class="text-fuchsia">4. Biến URBAN</h2>
+                <p class="text-secondary" style="font-size: 0.88rem; margin-bottom: 8px;">
+                    Đánh giá vai trò yếu tố khu vực (Nội / Ngoại thành). H₀: Hệ số URBAN = 0.
+                </p>
+                <div class="gauge-wrapper" id="gaugeUrban">
+                    <div class="gauge-header">
+                        <span class="text-secondary">P-value (URBAN)</span>
+                        <span class="gauge-pvalue text-fuchsia" id="urbanPvalueDisplay">0.00018</span>
+                    </div>
+                    <div class="gauge-track" id="urbanTrack">
+                        <div class="gauge-fill reject" id="urbanFill"></div>
+                        <div class="gauge-alpha-marker" id="urbanAlphaMarker">
+                            <div class="gauge-alpha-line"></div>
+                            <div class="gauge-alpha-label" id="urbanAlphaLabel">α=0.05</div>
+                        </div>
+                        <div class="gauge-pvalue-marker" id="urbanPvalueMarker"></div>
+                    </div>
+                    <div class="gauge-legend">
+                        <span><span class="dot" style="background: var(--color-emerald);"></span> Bác bỏ H₀</span>
+                        <span><span class="dot" style="background: var(--color-text-muted);"></span> Chấp nhận H₀</span>
+                    </div>
+                </div>
+                <div class="decision-badge reject" id="urbanDecision">
+                    ✓ Bác bỏ H₀ — F = <span id="urbanFstat">14.28</span>
+                </div>
+                <div class="info-box fuchsia">
+                    <h3 class="text-fuchsia">📊 Kết luận Kinh tế lượng</h3>
+                    <p class="text-secondary">
+                        P-value rất nhỏ so với α, bác bỏ mạnh mẽ H₀. Biến URBAN có ý nghĩa thống kê
+                        cực kỳ cao — yếu tố địa lý thực sự tạo ra sự dịch chuyển đáng kể trong hành vi
+                        chi tiêu tại Hà Nội.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <!-- ===== IMPACT ANALYSIS: SCATTER PLOT ===== -->
+        <section class="card accent-emerald section fade-in">
+            <h2 class="text-emerald">5. Tác động của Khu vực lên Chi tiêu</h2>
+            <p class="text-secondary" style="margin-bottom: 20px;">
+                Biểu đồ phân tán mô phỏng 420 hộ gia đình: mỗi điểm là một quan sát.
+                Hai đường hồi quy song song cho thấy hệ số URBAN dịch chuyển mức chi tiêu lên trên.
+            </p>
+            <div class="chart-toggle-bar">
+                <button class="btn-toggle active" id="toggleAll" onclick="setScatterFilter('all')">Tất cả</button>
+                <button class="btn-toggle" id="toggleRural" onclick="setScatterFilter('rural')">Ngoại thành</button>
+                <button class="btn-toggle" id="toggleUrban" onclick="setScatterFilter('urban')">Nội thành</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 28px;" class="impact-grid">
+                <div class="chart-box" id="scatterChartBox">
+                    <canvas id="scatterChart"></canvas>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 16px; justify-content: center;" class="impact-cards">
+                    <div class="impact-card rural">
+                        <h3 style="color: var(--color-text-secondary); margin-bottom: 6px;">Ngoại thành (URBAN = 0)</h3>
+                        <p class="text-muted" style="font-size: 0.82rem;">
+                            Mức chi tiêu cơ sở — hệ số chặn thấp hơn. Giá cả hàng hóa, dịch vụ tại các huyện ngoại thành rẻ hơn nội đô.
+                        </p>
+                    </div>
+                    <div class="impact-card urban">
+                        <h3 style="margin-bottom: 6px;" class="text-emerald">Nội thành (URBAN = 1)</h3>
+                        <p class="text-muted" style="font-size: 0.82rem;">
+                            Đường hồi quy dịch chuyển lên trên β₃ ≈ 0.153 đơn vị log. Phản ánh áp lực lạm phát đô thị và chi phí sinh hoạt cao.
+                        </p>
                     </div>
                 </div>
             </div>
         </section>
-
-        <footer class="text-center text-slate-500 text-sm mt-12 pb-8">
-            <p>Infographic Dashboard tương tác - Trích xuất từ kết quả xử lý dữ liệu chuẩn trên phần mềm EViews 4.0.</p>
+        <!-- ===== DATA EXPLORER ===== -->
+        <section class="card section fade-in">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+                <h2 class="text-amber" style="margin-bottom: 0;">6. Dữ liệu Mẫu</h2>
+                <span class="text-muted" style="font-size: 0.75rem;">Nhấn vào tiêu đề cột để sắp xếp · Hiển thị 20 quan sát</span>
+            </div>
+            <div class="data-table-wrapper">
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(0)">#<span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(1)">Thu nhập<span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(2)">Quy mô hộ<span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(3)">Khu vực<span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(4)">Chi tiêu<span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(5)">ln(Chi tiêu)<span class="sort-icon">↕</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <!-- ===== FOOTER ===== -->
+        <footer>
+            <p>Infographic Dashboard tương tác — Trích xuất từ kết quả xử lý dữ liệu trên EViews 4.0.</p>
+            <p style="margin-top: 6px; opacity: 0.6;">Dữ liệu mô phỏng mang tính minh họa, dựa trên các hệ số ước lượng thực tế.</p>
         </footer>
-
     </div>
-
     <script>
-        // Hàm bẻ dòng nhãn (label) nếu quá dài
-        function wrapLabel(label) {
-            if (label.length <= 16) return label;
-            const words = label.split(' ');
-            let lines = [];
-            let currentLine = '';
-            words.forEach(word => {
-                if ((currentLine + word).length > 16) {
-                    if (currentLine) lines.push(currentLine.trim());
-                    currentLine = word + ' ';
-                } else {
-                    currentLine += word + ' ';
-                }
-            });
-            if (currentLine) lines.push(currentLine.trim());
-            return lines;
+    /* ============================================================
+       CONFIGURATION & STATE
+       ============================================================ */
+    const MODEL = {
+        beta0: 2.80,    // Intercept
+        beta1: 0.68,    // ln(INCOME) coefficient
+        beta2: 0.045,   // SIZE coefficient
+        beta3: 0.153,   // URBAN coefficient
+        sigma: 0.25,    // Error std dev
+        n: 420
+    };
+    let state = {
+        alpha: 0.05,
+        foodPValue: 0.0000,
+        foodFStat: 56.54,
+        urbanPValue: 0.00018,
+        urbanFStat: 14.28,
+        data: [],
+        scatterFilter: 'all',
+        sortCol: -1,
+        sortAsc: true
+    };
+    let scatterChartInstance = null;
+    /* ============================================================
+       UTILITY FUNCTIONS
+       ============================================================ */
+    // Box-Muller transform for normal distribution
+    function randn() {
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+    function clamp(val, min, max) {
+        return Math.min(Math.max(val, min), max);
+    }
+    function formatNum(n, decimals = 2) {
+        return n.toLocaleString('vi-VN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+    function formatVND(n) {
+        if (n >= 1000) return formatNum(n / 1000, 1) + ' triệu';
+        return formatNum(n, 0) + ' nghìn';
+    }
+    /* ============================================================
+       DATA GENERATION
+       ============================================================ */
+    function generateData() {
+        const data = [];
+        for (let i = 0; i < MODEL.n; i++) {
+            // Thu nhập: 2.000 - 25.000 (nghìn VND)
+            const income = Math.exp(7.6 + Math.random() * 2.6); // ~2000 to ~25000
+            const size = Math.floor(Math.random() * 6) + 1;     // 1-6 thành viên
+            const urban = Math.random() > 0.42 ? 1 : 0;         // ~58% nội thành
+            const lnIncome = Math.log(income);
+            const noise = randn() * MODEL.sigma;
+            const lnConsum = MODEL.beta0 + MODEL.beta1 * lnIncome
+                           + MODEL.beta2 * size + MODEL.beta3 * urban + noise;
+            const consum = Math.exp(lnConsum);
+            data.push({ id: i + 1, income, size, urban, lnIncome, lnConsum, consum });
         }
-
-        // Cấu hình chung cho Chart.js
-        const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                duration: 2000,
-                easing: 'easeOutQuart'
-            },
-            plugins: {
-                legend: { labels: { color: '#cbd5e1' } },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    titleColor: '#22d3ee',
-                    bodyColor: '#f8fafc',
-                    borderColor: '#334155',
-                    borderWidth: 1,
-                    padding: 12,
-                    callbacks: {
-                        title: function(tooltipItems) {
-                            const item = tooltipItems[0];
-                            let label = item.chart.data.labels[item.dataIndex];
-                            return Array.isArray(label) ? label.join(' ') : label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#334155', drawBorder: false },
-                    ticks: { color: '#94a3b8' }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#94a3b8', font: {size: 11} }
-                }
-            }
+        return data;
+    }
+    function simulateTestStats() {
+        // Randomize test statistics slightly around true values
+        const foodF = 56.54 + randn() * 6;
+        const urbanF = 14.28 + randn() * 3;
+        // Approximate p-values (using exponential decay approximation)
+        // For F(1, 416): very large F → very small p
+        const foodP = Math.max(0, Math.exp(-foodF * 0.15) * 0.001);
+        const urbanP = Math.max(0.00001, Math.exp(-urbanF * 0.12) * 0.05);
+        return {
+            foodFStat: Math.max(1, foodF),
+            foodPValue: foodP,
+            urbanFStat: Math.max(1, urbanF),
+            urbanPValue: urbanP
         };
-
-        // Khai báo biến lưu trữ các Chart để có thể destroy() khi chạy lại
-        let chartFoodInstance = null;
-        let chartUrbanInstance = null;
-        let chartImpactInstance = null;
-
-        function renderCharts() {
-            // Render Biểu đồ FOOD
-            const ctxFood = document.getElementById('chartFood').getContext('2d');
-            chartFoodInstance = new Chart(ctxFood, {
-                type: 'bar',
-                data: {
-                    labels: [wrapLabel('Ngưỡng Ý nghĩa (Alpha)'), wrapLabel('Chỉ số P-value (FOOD)')],
-                    datasets: [{
-                        label: 'Giá trị xác suất',
-                        data: [0.05, 0.0000],
-                        backgroundColor: ['#334155', '#ef4444'],
-                        borderRadius: 6,
-                        barPercentage: 0.6
-                    }]
-                },
-                options: {
-                    ...commonOptions,
-                    plugins: {
-                        ...commonOptions.plugins,
-                        title: {
-                            display: true,
-                            text: 'F-statistic: 56.54 | Bác bỏ H0',
-                            color: '#f8fafc',
-                            font: { size: 15, family: 'Inter' },
-                            padding: { bottom: 20 }
-                        }
-                    }
-                }
+    }
+    /* ============================================================
+       GAUGE RENDERING
+       ============================================================ */
+    function getGaugePosition(value) {
+        // Linear scale: 0 to 0.10 maps to 0% to 100%
+        return clamp((value / 0.10) * 100, 0.5, 99.5);
+    }
+    function updateGauges() {
+        const alpha = state.alpha;
+        const alphaPos = getGaugePosition(alpha) + '%';
+        // FOOD gauge
+        const foodPPos = getGaugePosition(state.foodPValue) + '%';
+        const foodReject = state.foodPValue < alpha;
+        document.getElementById('foodTrack').style.setProperty('--alpha-pos', alphaPos);
+        document.getElementById('foodFill').style.width = foodPPos;
+        document.getElementById('foodFill').className = 'gauge-fill ' + (foodReject ? 'reject' : 'accept');
+        document.getElementById('foodAlphaMarker').style.left = alphaPos;
+        document.getElementById('foodAlphaLabel').textContent = 'α=' + alpha.toFixed(2);
+        document.getElementById('foodPvalueMarker').style.left = foodPPos;
+        document.getElementById('foodPvalueMarker').className = 'gauge-pvalue-marker' + (foodReject ? '' : ' accept');
+        document.getElementById('foodPvalueDisplay').textContent = state.foodPValue < 0.0001 ? '< 0.0001' : state.foodPValue.toFixed(4);
+        document.getElementById('foodFstat').textContent = state.foodFStat.toFixed(2);
+        const foodDecision = document.getElementById('foodDecision');
+        if (foodReject) {
+            foodDecision.className = 'decision-badge reject';
+            foodDecision.innerHTML = '✓ Bác bỏ H₀ — F = <span id="foodFstat">' + state.foodFStat.toFixed(2) + '</span>';
+        } else {
+            foodDecision.className = 'decision-badge accept';
+            foodDecision.innerHTML = '✗ Chấp nhận H₀ — F = <span id="foodFstat">' + state.foodFStat.toFixed(2) + '</span>';
+        }
+        // URBAN gauge
+        const urbanPPos = getGaugePosition(state.urbanPValue) + '%';
+        const urbanReject = state.urbanPValue < alpha;
+        document.getElementById('urbanTrack').style.setProperty('--alpha-pos', alphaPos);
+        document.getElementById('urbanFill').style.width = urbanPPos;
+        document.getElementById('urbanFill').className = 'gauge-fill ' + (urbanReject ? 'reject' : 'accept');
+        document.getElementById('urbanAlphaMarker').style.left = alphaPos;
+        document.getElementById('urbanAlphaLabel').textContent = 'α=' + alpha.toFixed(2);
+        document.getElementById('urbanPvalueMarker').style.left = urbanPPos;
+        document.getElementById('urbanPvalueMarker').className = 'gauge-pvalue-marker' + (urbanReject ? '' : ' accept');
+        document.getElementById('urbanPvalueDisplay').textContent = state.urbanPValue.toFixed(5);
+        document.getElementById('urbanFstat').textContent = state.urbanFStat.toFixed(2);
+        const urbanDecision = document.getElementById('urbanDecision');
+        if (urbanReject) {
+            urbanDecision.className = 'decision-badge reject';
+            urbanDecision.innerHTML = '✓ Bác bỏ H₀ — F = <span id="urbanFstat">' + state.urbanFStat.toFixed(2) + '</span>';
+        } else {
+            urbanDecision.className = 'decision-badge accept';
+            urbanDecision.innerHTML = '✗ Chấp nhận H₀ — F = <span id="urbanFstat">' + state.urbanFStat.toFixed(2) + '</span>';
+        }
+    }
+    /* ============================================================
+       SCATTER CHART
+       ============================================================ */
+    function getChartColors() {
+        return {
+            rural: { bg: 'rgba(148, 163, 184, 0.35)', border: 'rgba(148, 163, 184, 0.8)' },
+            urban: { bg: 'rgba(52, 211, 153, 0.35)', border: 'rgba(52, 211, 153, 0.8)' },
+            ruralLine: 'rgba(148, 163, 184, 0.9)',
+            urbanLine: 'rgba(52, 211, 153, 0.9)'
+        };
+    }
+    function buildScatterData() {
+        const colors = getChartColors();
+        const filter = state.scatterFilter;
+        const data = state.data;
+        const ruralPoints = data.filter(d => d.urban === 0).map(d => ({ x: d.lnIncome, y: d.lnConsum }));
+        const urbanPoints = data.filter(d => d.urban === 1).map(d => ({ x: d.lnIncome, y: d.lnConsum }));
+        // Regression lines
+        const xMin = Math.min(...data.map(d => d.lnIncome)) - 0.1;
+        const xMax = Math.max(...data.map(d => d.lnIncome)) + 0.1;
+        const avgSize = data.reduce((s, d) => s + d.size, 0) / data.length;
+        const ruralIntercept = MODEL.beta0 + MODEL.beta2 * avgSize;
+        const urbanIntercept = MODEL.beta0 + MODEL.beta2 * avgSize + MODEL.beta3;
+        const ruralLine = [
+            { x: xMin, y: ruralIntercept + MODEL.beta1 * xMin },
+            { x: xMax, y: ruralIntercept + MODEL.beta1 * xMax }
+        ];
+        const urbanLine = [
+            { x: xMin, y: urbanIntercept + MODEL.beta1 * xMin },
+            { x: xMax, y: urbanIntercept + MODEL.beta1 * xMax }
+        ];
+        const datasets = [];
+        if (filter === 'all' || filter === 'rural') {
+            datasets.push({
+                label: 'Ngoại thành',
+                data: ruralPoints,
+                backgroundColor: colors.rural.bg,
+                borderColor: colors.rural.border,
+                borderWidth: 1,
+                pointRadius: 3.5,
+                pointHoverRadius: 7,
+                pointHoverBackgroundColor: '#fff',
+                order: 2
             });
-
-            // Render Biểu đồ URBAN
-            const ctxUrban = document.getElementById('chartUrban').getContext('2d');
-            chartUrbanInstance = new Chart(ctxUrban, {
-                type: 'bar',
-                data: {
-                    labels: [wrapLabel('Ngưỡng Ý nghĩa (Alpha)'), wrapLabel('Chỉ số P-value (URBAN)')],
-                    datasets: [{
-                        label: 'Giá trị xác suất',
-                        data: [0.05, 0.00018],
-                        backgroundColor: ['#334155', '#10b981'],
-                        borderRadius: 6,
-                        barPercentage: 0.6
-                    }]
-                },
-                options: {
-                    ...commonOptions,
-                    plugins: {
-                        ...commonOptions.plugins,
-                        title: {
-                            display: true,
-                            text: 'F-statistic: 14.28 | Bác bỏ H0',
-                            color: '#f8fafc',
-                            font: { size: 15, family: 'Inter' },
-                            padding: { bottom: 20 }
-                        }
-                    }
-                }
+            datasets.push({
+                label: 'Hồi quy — Ngoại thành',
+                data: ruralLine,
+                type: 'line',
+                borderColor: colors.ruralLine,
+                borderWidth: 2.5,
+                borderDash: [8, 4],
+                pointRadius: 0,
+                fill: false,
+                order: 1
             });
-
-            // Render Biểu đồ Doughnut (URBAN Impact)
-            const ctxImpact = document.getElementById('chartImpact').getContext('2d');
-            const doughnutOptions = {
+        }
+        if (filter === 'all' || filter === 'urban') {
+            datasets.push({
+                label: 'Nội thành',
+                data: urbanPoints,
+                backgroundColor: colors.urban.bg,
+                borderColor: colors.urban.border,
+                borderWidth: 1,
+                pointRadius: 3.5,
+                pointHoverRadius: 7,
+                pointHoverBackgroundColor: '#fff',
+                order: 2
+            });
+            datasets.push({
+                label: 'Hồi quy — Nội thành',
+                data: urbanLine,
+                type: 'line',
+                borderColor: colors.urbanLine,
+                borderWidth: 2.5,
+                pointRadius: 0,
+                fill: false,
+                order: 1
+            });
+        }
+        return datasets;
+    }
+    function renderScatterChart() {
+        const ctx = document.getElementById('scatterChart').getContext('2d');
+        if (scatterChartInstance) scatterChartInstance.destroy();
+        scatterChartInstance = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets: buildScatterData() },
+            options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: { animateScale: true, animateRotate: true, duration: 2000 },
+                animation: { duration: 1200, easing: 'easeOutQuart' },
+                interaction: { mode: 'nearest', intersect: true },
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#cbd5e1', padding: 20 } },
-                    tooltip: commonOptions.plugins.tooltip
-                }
-            };
-
-            chartImpactInstance = new Chart(ctxImpact, {
-                type: 'doughnut',
-                data: {
-                    labels: [wrapLabel('Ngoại thành (URBAN = 0)'), wrapLabel('Nội thành (URBAN = 1)')],
-                    datasets: [{
-                        data: [45, 85],
-                        backgroundColor: ['#64748b', '#10b981'],
-                        borderWidth: 3,
-                        borderColor: '#0f172a',
-                        hoverOffset: 15
-                    }]
-                },
-                options: {
-                    ...doughnutOptions,
-                    cutout: '75%',
-                    plugins: {
-                        ...doughnutOptions.plugins,
-                        title: {
-                            display: true,
-                            text: 'Mô phỏng Mức chi tiêu Cơ sở vs Tăng cường',
-                            color: '#f8fafc',
-                            font: { size: 14, weight: 'normal' },
-                            padding: { bottom: 10 }
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: '#94a3b8',
+                            font: { family: 'Inter', size: 12 },
+                            usePointStyle: true,
+                            pointStyleWidth: 12,
+                            padding: 20,
+                            filter: function(item) {
+                                // Hide regression line legends
+                                return !item.text.startsWith('Hồi quy');
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(11, 17, 32, 0.95)',
+                        titleColor: '#22d3ee',
+                        bodyColor: '#f1f5f9',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 14,
+                        titleFont: { family: 'Inter', weight: '600' },
+                        bodyFont: { family: 'JetBrains Mono', size: 12 },
+                        callbacks: {
+                            title: function(items) {
+                                return items[0].dataset.label;
+                            },
+                            label: function(ctx) {
+                                if (ctx.dataset.type === 'line') return null;
+                                return [
+                                    'ln(Thu nhập): ' + ctx.parsed.x.toFixed(3),
+                                    'ln(Chi tiêu): ' + ctx.parsed.y.toFixed(3),
+                                    'Thu nhập: ' + formatVND(Math.exp(ctx.parsed.x)),
+                                    'Chi tiêu: ' + formatVND(Math.exp(ctx.parsed.y))
+                                ];
+                            }
                         }
                     }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'ln(Thu nhập — INCOME)',
+                            color: '#64748b',
+                            font: { family: 'Inter', size: 12, weight: '500' }
+                        },
+                        grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 11 } }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'ln(Chi tiêu — CONSUM)',
+                            color: '#64748b',
+                            font: { family: 'Inter', size: 12, weight: '500' }
+                        },
+                        grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                        ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 11 } }
+                    }
                 }
+            }
+        });
+    }
+    function setScatterFilter(filter) {
+        state.scatterFilter = filter;
+        // Update toggle buttons
+        document.querySelectorAll('.chart-toggle-bar .btn-toggle').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById('toggle' + filter.charAt(0).toUpperCase() + filter.slice(1)).classList.add('active');
+        renderScatterChart();
+    }
+    /* ============================================================
+       DATA TABLE
+       ============================================================ */
+    function renderTable() {
+        const tbody = document.getElementById('dataTableBody');
+        const displayData = state.data.slice(0, 20);
+        // Sort if needed
+        if (state.sortCol >= 0) {
+            const keys = ['id', 'income', 'size', 'urban', 'consum', 'lnConsum'];
+            const key = keys[state.sortCol];
+            displayData.sort((a, b) => {
+                const diff = a[key] - b[key];
+                return state.sortAsc ? diff : -diff;
             });
         }
-
-        // Hàm gọi khi bấm nút "Chạy lại mô phỏng"
-        function reRenderCharts() {
-            if(chartFoodInstance) chartFoodInstance.destroy();
-            if(chartUrbanInstance) chartUrbanInstance.destroy();
-            if(chartImpactInstance) chartImpactInstance.destroy();
-            renderCharts();
+        tbody.innerHTML = displayData.map(d => `
+            <tr>
+                <td style="color: var(--color-text-muted);">${d.id}</td>
+                <td>${formatVND(d.income)}</td>
+                <td style="text-align: center;">${d.size}</td>
+                <td><span class="tag ${d.urban ? 'tag-urban' : 'tag-rural'}">${d.urban ? 'Nội thành' : 'Ngoại thành'}</span></td>
+                <td>${formatVND(d.consum)}</td>
+                <td style="color: var(--color-text-muted);">${d.lnConsum.toFixed(3)}</td>
+            </tr>
+        `).join('');
+    }
+    function sortTable(colIndex) {
+        if (state.sortCol === colIndex) {
+            state.sortAsc = !state.sortAsc;
+        } else {
+            state.sortCol = colIndex;
+            state.sortAsc = true;
         }
-
-        // Chạy lần đầu khi load trang
-        window.onload = renderCharts;
+        // Update header classes
+        document.querySelectorAll('.data-table th').forEach((th, i) => {
+            th.classList.toggle('sorted', i === colIndex);
+            const icon = th.querySelector('.sort-icon');
+            if (icon) icon.textContent = i === colIndex ? (state.sortAsc ? '↑' : '↓') : '↕';
+        });
+        renderTable();
+    }
+    /* ============================================================
+       ANIMATED COUNTERS
+       ============================================================ */
+    function animateCounter(el) {
+        const target = parseFloat(el.dataset.counter);
+        const decimals = parseInt(el.dataset.decimals || '0');
+        const duration = 1500;
+        const start = performance.now();
+        function tick(now) {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+            const current = target * eased;
+            el.textContent = current.toFixed(decimals);
+            if (progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    }
+    /* ============================================================
+       COEFFICIENT BARS
+       ============================================================ */
+    function animateCoeffBars() {
+        document.querySelectorAll('.coeff-bar').forEach(bar => {
+            const target = bar.dataset.width;
+            setTimeout(() => {
+                bar.style.width = target;
+            }, 200);
+        });
+    }
+    /* ============================================================
+       SCROLL ANIMATIONS
+       ============================================================ */
+    function setupScrollAnimations() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    // Trigger counter animation for stat values
+                    entry.target.querySelectorAll('[data-counter]').forEach(el => {
+                        if (!el.dataset.animated) {
+                            el.dataset.animated = '1';
+                            animateCounter(el);
+                        }
+                    });
+                    // Trigger coefficient bar animation
+                    entry.target.querySelectorAll('.coeff-bar').forEach(bar => {
+                        if (!bar.dataset.animated) {
+                            bar.dataset.animated = '1';
+                            setTimeout(() => { bar.style.width = bar.dataset.width; }, 300);
+                        }
+                    });
+                }
+            });
+        }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+    }
+    /* ============================================================
+       EVENT HANDLERS
+       ============================================================ */
+    function onAlphaChange(e) {
+        state.alpha = parseFloat(e.target.value);
+        document.getElementById('alphaDisplay').textContent = state.alpha.toFixed(2);
+        updateGauges();
+    }
+    function runSimulation() {
+        // Animate button
+        const btn = document.getElementById('simulateBtn');
+        btn.style.transform = 'scale(0.95)';
+        setTimeout(() => { btn.style.transform = ''; }, 150);
+        // Generate new data
+        state.data = generateData();
+        // Simulate new test statistics
+        const stats = simulateTestStats();
+        state.foodFStat = stats.foodFStat;
+        state.foodPValue = stats.foodPValue;
+        state.urbanFStat = stats.urbanFStat;
+        state.urbanPValue = stats.urbanPValue;
+        // Update everything
+        updateGauges();
+        renderScatterChart();
+        renderTable();
+    }
+    /* ============================================================
+       RESPONSIVE LAYOUT
+       ============================================================ */
+    function setupResponsiveLayout() {
+        const impactGrid = document.querySelector('.impact-grid');
+        function updateLayout() {
+            if (window.innerWidth >= 900) {
+                impactGrid.style.gridTemplateColumns = '1.5fr 1fr';
+            } else {
+                impactGrid.style.gridTemplateColumns = '1fr';
+            }
+        }
+        updateLayout();
+        window.addEventListener('resize', updateLayout);
+    }
+    /* ============================================================
+       INITIALIZATION
+       ============================================================ */
+    function init() {
+        // Generate initial data
+        state.data = generateData();
+        // Setup slider
+        document.getElementById('alphaSlider').addEventListener('input', onAlphaChange);
+        // Render gauges
+        updateGauges();
+        // Render charts
+        renderScatterChart();
+        // Render table
+        renderTable();
+        // Setup animations
+        setupScrollAnimations();
+        // Setup responsive layout
+        setupResponsiveLayout();
+    }
+    document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
